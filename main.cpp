@@ -428,10 +428,10 @@ static void render()
 	*/
 
 	glUseProgram(program_Framebuffer);
-	glBindVertexArray(objects[0].vao);
+	//glBindVertexArray(objects[0].vao);
 	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
 
-	setUniformMat4(program_Framebuffer, "model", glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 8.0f, -1.0f)));
+	//setUniformMat4(program_Framebuffer, "model", glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 8.0f, -1.0f)));
 
 	glDrawElements(GL_TRIANGLES, indicesCount[0], GL_UNSIGNED_INT, nullptr);
 }
@@ -539,7 +539,7 @@ int main(int argc, char *argv[])
 	glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
 	glBindVertexArray(0);
