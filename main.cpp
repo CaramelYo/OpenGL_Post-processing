@@ -26,9 +26,26 @@ struct object_struct{
 
 //the vector that save our created objects
 std::vector<object_struct> objects;//vertex array object,vertex buffer object and texture(color) for objs
-unsigned int program, program_flat, program_Gouraud, program_phong, program_Binn_Phong;
+unsigned int program, program_flat, program_Gouraud, program_phong, program_Binn_Phong, program_Framebuffer;
 //the index of a obj to our vertex list
 std::vector<int> indicesCount;//Number of indice of objs
+
+GLuint framebuffer;
+GLuint textureColorbuffer;
+
+GLfloat quadVertices[] = {   // Vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+							 // Positions   // TexCoords
+	-1.0f,  1.0f,  0.0f, 1.0f,
+	-1.0f, -1.0f,  0.0f, 0.0f,
+	1.0f, -1.0f,  1.0f, 0.0f,
+
+	-1.0f,  1.0f,  0.0f, 1.0f,
+	1.0f, -1.0f,  1.0f, 0.0f,
+	1.0f,  1.0f,  1.0f, 1.0f
+};
+GLuint quadVAO, quadVBO;
+
+
 
 static void error_callback(int error, const char* description)
 {
@@ -311,8 +328,13 @@ static void setUniformMat4(unsigned int program, const std::string &name, const 
 
 static void render()
 {
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
 	//to clear the buffer
+	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+
 	//to render each obj in objects
 	
 	/*
@@ -342,7 +364,7 @@ static void render()
 		glDrawElements(GL_TRIANGLES, indicesCount[i], GL_UNSIGNED_INT, nullptr);
 	}
 	*/
-	
+	/*
 	//Gouraud shading
 	//left bottom
 	
@@ -374,7 +396,7 @@ static void render()
 	setUniformMat4(objects[3].program, "model", glm::translate(glm::mat4(1.0f),glm::vec3(8.0f, -2.0f, 5.0f)));
 	
 	glDrawElements(GL_TRIANGLES, indicesCount[3], GL_UNSIGNED_INT, nullptr);
-	
+	*/
 	//flat shading
 	//left top
 	
@@ -390,6 +412,28 @@ static void render()
 	
 	//to close the vao
 	glBindVertexArray(0);
+
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glDisable(GL_DEPTH_TEST);
+
+	/*
+	glUseProgram(program_Framebuffer);
+	glBindVertexArray(quadVAO);
+	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
+	*/
+
+	glUseProgram(program_Framebuffer);
+	glBindVertexArray(objects[0].vao);
+	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+
+	setUniformMat4(program_Framebuffer, "model", glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 8.0f, -1.0f)));
+
+	glDrawElements(GL_TRIANGLES, indicesCount[0], GL_UNSIGNED_INT, nullptr);
 }
 
 int main(int argc, char *argv[])
@@ -433,6 +477,7 @@ int main(int argc, char *argv[])
 	program_Gouraud = setup_shader(readfile("Gouraud_vs.txt").c_str(), readfile("Gouraud_fs.txt").c_str());
 	program_phong = setup_shader(readfile("phong_vs.txt").c_str(), readfile("phong_fs.txt").c_str());
 	program_Binn_Phong = setup_shader(readfile("Binn_Phong_vs.txt").c_str(), readfile("Binn_Phong_fs.txt").c_str());
+	program_Framebuffer = setup_shader(readfile("Framebuffer_vs.txt").c_str(), readfile("Framebuffer_fs.txt").c_str());
 	
 	//to create the sun in diffrent shaders
 	int sun_flat = add_obj(program_flat, "sun.obj","sun.bmp");
@@ -486,6 +531,47 @@ int main(int argc, char *argv[])
 	objects[sun_Gouraud].model = glm::scale(glm::mat4(1.0f), glm::vec3(0.85f));
 	objects[sun_phong].model = glm::scale(glm::mat4(1.0f), glm::vec3(0.85f));
 	objects[sun_Binn_Phong].model = glm::scale(glm::mat4(1.0f), glm::vec3(0.85f));
+
+
+	glGenVertexArrays(1, &quadVAO);
+	glGenBuffers(1, &quadVBO);
+	glBindVertexArray(quadVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
+	glBindVertexArray(0);
+
+	//GLuint framebuffer;
+	glGenFramebuffers(1, &framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+	//GLuint textureColorbuffer = generateAttachmentTexture(false, false);
+
+	glGenTextures(1, &textureColorbuffer);
+	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+
+	GLuint rbo;
+	glGenRenderbuffers(1, &rbo);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 800, 600);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		std::cout << "ERROR: frambuffer is not complete!" << std::endl;
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	
 	while (!glfwWindowShouldClose(window))
 	{//program will keep draw here until you close the window
