@@ -12,9 +12,113 @@ in vec2 fTexcoord;
 //texture objects is declared as "sampler" type in GLSL
 //sampler1D, sampler2D,etc. 
 uniform sampler2D uSampler;
+const float offset = 1.0 / 300;  
+
+//uniform float offset;
+
+uniform float topleft;
+uniform float topcenter;
+uniform float topright;
+uniform float middleleft;
+uniform float middlecenter;
+uniform float middleright;
+uniform float bottomleft;
+uniform float bottomcenter;
+uniform float bottomright;
+
+
+uniform float xpos;
+uniform float ypos;
+
+const float circleRadius = 0.1f;
+const float zoom = 0.5f;
 
 void main()
 {
+    vec2 offsets[9] = vec2[](
+        vec2(-offset, offset),  // top-left
+        vec2(0.0f,    offset),  // top-center
+        vec2(offset,  offset),  // top-right
+        vec2(-offset, 0.0f),    // center-left
+        vec2(0.0f,    0.0f),    // center-center
+        vec2(offset,  0.0f),    // center-right
+        vec2(-offset, -offset), // bottom-left
+        vec2(0.0f,    -offset), // bottom-center
+        vec2(offset,  -offset)  // bottom-right    
+    );
+
+	//normalize the GaussianBlur
+	float a = 1 / (topleft + topcenter + topright + middleleft + middlecenter + middleright + bottomleft + bottomcenter + bottomright);
+	
+	float kernel[9] = float[](
+		topleft * a, topcenter * a, topright *a,
+		middleleft * a, middlecenter * a, middleright * a,
+		bottomleft * a, bottomcenter * a, bottomright * a
+	);
+	
+	/*
+	float kernel[9] = float[](
+    1.0 / 16, 2.0 / 16, 1.0 / 16,
+    2.0 / 16, 4.0 / 16, 2.0 / 16,
+    1.0 / 16, 2.0 / 16, 1.0 / 16  
+    );
+	*/
+
 	//the texture fuction will sample the color value using the texture parameters (first parameter), and then output the texture at the texture coordinate(second parameter)
-	color=texture( uSampler,fTexcoord);
+	//color = vec4(vec3(1.0 - texture( uSampler,fTexcoord)), 1.0);
+
+	//color = texture(uSampler, fTexcoord);
+
+	vec3 sampleTex[9];
+
+	if(xpos > 0.0 && ypos > 0.0)
+	{
+		float relX = fTexcoord.s - xpos;
+		float relY = fTexcoord.t - (1.0f - ypos);
+		float dist = sqrt(relX*relX + relY*relY);
+
+		if(dist <= circleRadius && dist > 0)
+		{
+			float newRad = dist * (zoom * dist / circleRadius);
+			float newX = xpos + relX / dist * newRad;
+			float newY = (1.0f - ypos) + relY / dist * newRad;
+			vec2 newtexture = vec2(newX, newY);
+
+			for(int i = 0; i < 9; i++)
+			{
+				sampleTex[i] = vec3(texture(uSampler, newtexture + offsets[i]));
+			}
+
+			vec3 col = vec3(0.0);
+			for(int i = 0; i < 9; i++)
+				col += sampleTex[i] * kernel[i];
+
+			color = vec4(col, 1.0);
+		}
+		else
+		{
+			for(int i = 0; i < 9; i++)
+			{
+				sampleTex[i] = vec3(texture(uSampler, fTexcoord + offsets[i]));
+			}
+			vec3 col = vec3(0.0);
+			for(int i = 0; i < 9; i++)
+				col += sampleTex[i] * kernel[i];
+
+			color = vec4(col, 1.0);
+		}
+	}
+	else
+	{
+			for(int i = 0; i < 9; i++)
+			{
+				sampleTex[i] = vec3(texture(uSampler, fTexcoord + offsets[i]));
+			}
+			vec3 col = vec3(0.0);
+			for(int i = 0; i < 9; i++)
+				col += sampleTex[i] * kernel[i];
+
+			color = vec4(col, 1.0);
+	}
+	
 }

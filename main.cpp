@@ -9,8 +9,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include "tiny_obj_loader.h"
+#include <cmath>
 
 #define GLM_FORCE_RADIANS
+# define M_PI           3.14159265358979323846  /* pi */
 
 
 struct object_struct{
@@ -32,6 +34,7 @@ std::vector<int> indicesCount;//Number of indice of objs
 
 GLuint framebuffer;
 GLuint textureColorbuffer;
+
 
 GLfloat quadVertices[] = {   // Vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
 							 // Positions   // TexCoords
@@ -326,45 +329,34 @@ static void setUniformMat4(unsigned int program, const std::string &name, const 
 	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(mat));
 }
 
+static void setGaussianBlur(const float &x, const float &y, const float &deviation, const std::string &name)
+{
+	GLint loc = glGetUniformLocation(program_Framebuffer, name.c_str());
+
+	if (loc == -1)
+	{
+		std::cout << name << " cannot find!!" << std::endl;
+		return;
+	}
+
+	//std::cout << name << "  " << 1.0f / (2 * M_PI * deviation * deviation) * exp(-((x*x) + (y*y)) / (2 * deviation * deviation)) << std::endl;
+
+	//std::cout << name << "  " << 1.0f / (2 * M_PI * deviation * deviation) * exp(-((1*1) + (1*1)) / (2 * deviation * deviation)) << std::endl;
+
+	glUniform1f(loc, 1.0f / (2 * M_PI * deviation * deviation) * exp(-((x*x) + (y*y)) / (2 * deviation * deviation)));
+	return;
+}
+
 static void render()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-
+	
 	//to clear the buffer
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
-
-	//to render each obj in objects
 	
-	/*
-	for(int i=0;i<objects.size();i++){
 	
-		glUseProgram(objects[i].program);
-		glBindVertexArray(objects[i].vao);
-		glBindTexture(GL_TEXTURE_2D, objects[i].texture);
-		//you should send some data to shader here
-			
-		if(i == 0)
-		{
-			//sun
-			//to stay at origin
-			setUniformMat4(objects[i].program, "model", glm::mat4());
-		}
-	
-		if(i == 1)
-		{
-			//earth
-			//oval revolution, rotation
-			setUniformMat4(objects[i].program, "model", glm::translate(glm::mat4(1.0f),glm::vec3(10.0f * cos((GLfloat)glfwGetTime()),0.0f, 15.0f * sin((GLfloat)glfwGetTime()))  ) * glm::rotate(glm::mat4(1.0f), (GLfloat)glfwGetTime() * 10.0f, glm::vec3(0.0f,1.0f,0.0f)) * glm::scale(glm::mat4(1.0f),glm::vec3(2.0f,2.0f,2.0f)));
-		}
-		
-		//1st argument is the draw mode, 2nd argument is the number of indices, 3rd argument is the type of 2nd, 4th argument is offset
-		//to draw
-		glDrawElements(GL_TRIANGLES, indicesCount[i], GL_UNSIGNED_INT, nullptr);
-	}
-	*/
-	/*
 	//Gouraud shading
 	//left bottom
 	
@@ -379,6 +371,7 @@ static void render()
 	
 	//phong shading
 	//right top
+	
 	glUseProgram(objects[2].program);
 	glBindVertexArray(objects[2].vao);
 	glBindTexture(GL_TEXTURE_2D, objects[2].texture);
@@ -386,6 +379,7 @@ static void render()
 	setUniformMat4(objects[2].program, "model", glm::translate(glm::mat4(1.0f),glm::vec3(10.0f, 8.0f, -1.0f)));
 	
 	glDrawElements(GL_TRIANGLES, indicesCount[2], GL_UNSIGNED_INT, nullptr);
+	
 	
 	//Blinn–Phong shading
 	//right bottom
@@ -396,7 +390,7 @@ static void render()
 	setUniformMat4(objects[3].program, "model", glm::translate(glm::mat4(1.0f),glm::vec3(8.0f, -2.0f, 5.0f)));
 	
 	glDrawElements(GL_TRIANGLES, indicesCount[3], GL_UNSIGNED_INT, nullptr);
-	*/
+	
 	//flat shading
 	//left top
 	
@@ -412,28 +406,23 @@ static void render()
 	
 	//to close the vao
 	glBindVertexArray(0);
-
-
+	
+	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glDisable(GL_DEPTH_TEST);
-
-	/*
+	
 	glUseProgram(program_Framebuffer);
 	glBindVertexArray(quadVAO);
 	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+	
+	//setUniformMat4(objects[2].program, "model", glm::translate(glm::mat4(1.0f),glm::vec3(10.0f, 8.0f, -1.0f)));
+	
+	//glDrawElements(GL_TRIANGLES, 0, GL_UNSIGNED_INT, nullptr);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
+
 	glBindVertexArray(0);
-	*/
-
-	glUseProgram(program_Framebuffer);
-	//glBindVertexArray(objects[0].vao);
-	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-
-	//setUniformMat4(program_Framebuffer, "model", glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 8.0f, -1.0f)));
-
-	glDrawElements(GL_TRIANGLES, indicesCount[0], GL_UNSIGNED_INT, nullptr);
 }
 
 int main(int argc, char *argv[])
@@ -539,7 +528,7 @@ int main(int argc, char *argv[])
 	glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
 	glBindVertexArray(0);
@@ -548,8 +537,6 @@ int main(int argc, char *argv[])
 	glGenFramebuffers(1, &framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 
-	//GLuint textureColorbuffer = generateAttachmentTexture(false, false);
-
 	glGenTextures(1, &textureColorbuffer);
 	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
@@ -557,11 +544,11 @@ int main(int argc, char *argv[])
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
 
 	GLuint rbo;
 	glGenRenderbuffers(1, &rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 800, 600);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
@@ -573,10 +560,46 @@ int main(int argc, char *argv[])
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	
+	float deviation = 1.0f;
+	double xpos, ypos;
+	glfwSetCursorPos(window, 800 / 2, 600 / 2);
+
 	while (!glfwWindowShouldClose(window))
 	{//program will keep draw here until you close the window
 		//to calculate the fps
 		float delta = glfwGetTime() - start;
+
+		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		{
+			deviation += 0.1f;
+		}
+		if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+		{
+			if(deviation > 0.1f)
+				deviation -= 0.1f;
+		}
+
+		glUseProgram(program_Framebuffer);
+		
+		setGaussianBlur(-1.0f, 1.0f, deviation, "topleft");
+		setGaussianBlur(0.0f, 1.0f, deviation, "topcenter");
+		setGaussianBlur(1.0f, 1.0f, deviation, "topright");
+		setGaussianBlur(-1.0f, 0.0f, deviation, "middleleft");
+		setGaussianBlur(0.0f, 0.0f, deviation, "middlecenter");
+		setGaussianBlur(1.0f, 0.0f, deviation, "middleright");
+		setGaussianBlur(-1.0f, -1.0f, deviation, "bottomleft");
+		setGaussianBlur(0.0f, -1.0f, deviation, "bottomcenter");
+		setGaussianBlur(1.0f, -1.0f, deviation, "bottomright");
+		
+		//glPixelZoom(0.5f, 0.5f);
+		
+		glfwGetCursorPos(window, &xpos, &ypos);
+		GLuint loc = glGetUniformLocation(program_Framebuffer, "xpos");
+		glUniform1f(loc, (float)xpos/800);
+
+		loc = glGetUniformLocation(program_Framebuffer, "ypos");
+		glUniform1f(loc, (float)ypos/600);
+		
 		render();
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -591,6 +614,7 @@ int main(int argc, char *argv[])
 	}
 
 	//to release and close all the thing
+	glDeleteFramebuffers(1, &framebuffer);
 	releaseObjects();
 	glfwDestroyWindow(window);
 	glfwTerminate();
