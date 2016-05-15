@@ -85,18 +85,19 @@ void main()
 		{
 			//in our magnifying glass
 
-			/*
+			//to magnify
 			float newRad = dist * (zoom * dist / circleRadius);
 			float newX = xpos + relX / dist * newRad;
 			float newY = (1.0f - ypos) + relY / dist * newRad;
 			vec2 newtexture = vec2(newX, newY);
-			*/
-
+			
+			/*
 			//to magnify
 			float newX = xpos + relX * zoom;
 			float newY = (1.0f - ypos) + relY * zoom;
 			vec2 newtexture = vec2(newX, newY);
-			
+			*/
+
 			//to sample
 			for(int i = 0; i < 9; i++)
 			{
