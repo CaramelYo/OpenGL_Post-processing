@@ -32,10 +32,13 @@ unsigned int program, program_flat, program_Gouraud, program_phong, program_Binn
 //the index of a obj to our vertex list
 std::vector<int> indicesCount;//Number of indice of objs
 
+
+//the variable for framebuffer
 GLuint framebuffer;
+//the variable for colorattachment
 GLuint textureColorbuffer;
 
-
+//the canvas
 GLfloat quadVertices[] = {   // Vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
 							 // Positions   // TexCoords
 	-1.0f,  1.0f,  0.0f, 1.0f,
@@ -46,8 +49,8 @@ GLfloat quadVertices[] = {   // Vertex attributes for a quad that fills the enti
 	1.0f, -1.0f,  1.0f, 0.0f,
 	1.0f,  1.0f,  1.0f, 1.0f
 };
+//the VAO & VBO for canvas
 GLuint quadVAO, quadVBO;
-
 
 
 static void error_callback(int error, const char* description)
@@ -349,6 +352,7 @@ static void setGaussianBlur(const float &x, const float &y, const float &deviati
 
 static void render()
 {
+	//bind GL_FRAMEBUFFER to framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 	
 	//to clear the buffer
@@ -356,7 +360,8 @@ static void render()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 	
-	
+	//draw to "framebuffer"
+
 	//Gouraud shading
 	//left bottom
 	
@@ -407,19 +412,19 @@ static void render()
 	//to close the vao
 	glBindVertexArray(0);
 	
-	
+	//change back to default framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//to ensure to be clear
 	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glDisable(GL_DEPTH_TEST);
 	
+	//to use the framebuffer vs & fs
 	glUseProgram(program_Framebuffer);
 	glBindVertexArray(quadVAO);
+	//to use the colorattachment which is attached to "framebuffer"
 	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-	
-	//setUniformMat4(objects[2].program, "model", glm::translate(glm::mat4(1.0f),glm::vec3(10.0f, 8.0f, -1.0f)));
-	
-	//glDrawElements(GL_TRIANGLES, 0, GL_UNSIGNED_INT, nullptr);
+	//to draw
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
 	glBindVertexArray(0);
@@ -521,22 +526,25 @@ int main(int argc, char *argv[])
 	objects[sun_phong].model = glm::scale(glm::mat4(1.0f), glm::vec3(0.85f));
 	objects[sun_Binn_Phong].model = glm::scale(glm::mat4(1.0f), glm::vec3(0.85f));
 
-
+	//to set VAO & VBO for canvas
 	glGenVertexArrays(1, &quadVAO);
 	glGenBuffers(1, &quadVBO);
 	glBindVertexArray(quadVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+	//to set the position in Framebuffer_vs
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+	//to set the texcoord in Framebuffer_vs
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
 	glBindVertexArray(0);
 
-	//GLuint framebuffer;
+	//to set the "framebuffer"
 	glGenFramebuffers(1, &framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 
+	//to set the colorattachment
 	glGenTextures(1, &textureColorbuffer);
 	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
@@ -544,59 +552,118 @@ int main(int argc, char *argv[])
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
+	//to bind the "textureColorbuffer" to the colorattachment of "framebuffer"
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
 
+	//to use renderbuffer object
+	//renderbuffer is generally write-only, so it is used to store some values that are not need to be sampled, like depth and stencil
 	GLuint rbo;
 	glGenRenderbuffers(1, &rbo);
 	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+	//24bits for depth, 8bits for stencil
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 800, 600);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	//bind the rbo to the depth & stencil attachment of "framebuffer"
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
 
+	//to check if the "framebuffer" is ready
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
 		std::cout << "ERROR: frambuffer is not complete!" << std::endl;
 	}
 
+	//back to default framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	
-	float deviation = 1.0f;
+
+	//the deviation in GaussianBlur
+	float deviation = 0.5f, zoom = 0.5f;
+	//to store the position of cursor
 	double xpos, ypos;
+	//to initialize the position of cursor
 	glfwSetCursorPos(window, 800 / 2, 600 / 2);
 
+	//initially set the value of GaussianBlur
+	glUseProgram(program_Framebuffer);
+	setGaussianBlur(-1.0f, 1.0f, deviation, "topleft");
+	setGaussianBlur(0.0f, 1.0f, deviation, "topcenter");
+	setGaussianBlur(1.0f, 1.0f, deviation, "topright");
+	setGaussianBlur(-1.0f, 0.0f, deviation, "middleleft");
+	setGaussianBlur(0.0f, 0.0f, deviation, "middlecenter");
+	setGaussianBlur(1.0f, 0.0f, deviation, "middleright");
+	setGaussianBlur(-1.0f, -1.0f, deviation, "bottomleft");
+	setGaussianBlur(0.0f, -1.0f, deviation, "bottomcenter");
+	setGaussianBlur(1.0f, -1.0f, deviation, "bottomright");
+
+	//initially set the value of zoom
+	GLuint loc = glGetUniformLocation(program_Framebuffer, "zoom");
+	glUniform1f(loc, zoom);
+
 	while (!glfwWindowShouldClose(window))
-	{//program will keep draw here until you close the window
+	{
+		//program will keep draw here until you close the window
+
 		//to calculate the fps
 		float delta = glfwGetTime() - start;
 
 		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
 		{
+			//to add deviation , and to update the values in fs
 			deviation += 0.1f;
+			glUseProgram(program_Framebuffer);
+			setGaussianBlur(-1.0f, 1.0f, deviation, "topleft");
+			setGaussianBlur(0.0f, 1.0f, deviation, "topcenter");
+			setGaussianBlur(1.0f, 1.0f, deviation, "topright");
+			setGaussianBlur(-1.0f, 0.0f, deviation, "middleleft");
+			setGaussianBlur(0.0f, 0.0f, deviation, "middlecenter");
+			setGaussianBlur(1.0f, 0.0f, deviation, "middleright");
+			setGaussianBlur(-1.0f, -1.0f, deviation, "bottomleft");
+			setGaussianBlur(0.0f, -1.0f, deviation, "bottomcenter");
+			setGaussianBlur(1.0f, -1.0f, deviation, "bottomright");
 		}
 		if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
 		{
-			if(deviation > 0.1f)
+			//to reduce deviation , and to update the values in fs
+			if (deviation > 0.1f)
+			{
 				deviation -= 0.1f;
+				glUseProgram(program_Framebuffer);
+				setGaussianBlur(-1.0f, 1.0f, deviation, "topleft");
+				setGaussianBlur(0.0f, 1.0f, deviation, "topcenter");
+				setGaussianBlur(1.0f, 1.0f, deviation, "topright");
+				setGaussianBlur(-1.0f, 0.0f, deviation, "middleleft");
+				setGaussianBlur(0.0f, 0.0f, deviation, "middlecenter");
+				setGaussianBlur(1.0f, 0.0f, deviation, "middleright");
+				setGaussianBlur(-1.0f, -1.0f, deviation, "bottomleft");
+				setGaussianBlur(0.0f, -1.0f, deviation, "bottomcenter");
+				setGaussianBlur(1.0f, -1.0f, deviation, "bottomright");
+			}
 		}
 
-		glUseProgram(program_Framebuffer);
+		if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+		{
+			//to add zoom , and to update the values in fs
+			zoom += 0.1f;
+			glUseProgram(program_Framebuffer);
+			loc = glGetUniformLocation(program_Framebuffer, "zoom");
+			glUniform1f(loc, zoom);
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+		{
+			//to reduce zoom , and to update the values in fs
+			zoom -= 0.1f;
+			glUseProgram(program_Framebuffer);
+			loc = glGetUniformLocation(program_Framebuffer, "zoom");
+			glUniform1f(loc, zoom);
+		}
 		
-		setGaussianBlur(-1.0f, 1.0f, deviation, "topleft");
-		setGaussianBlur(0.0f, 1.0f, deviation, "topcenter");
-		setGaussianBlur(1.0f, 1.0f, deviation, "topright");
-		setGaussianBlur(-1.0f, 0.0f, deviation, "middleleft");
-		setGaussianBlur(0.0f, 0.0f, deviation, "middlecenter");
-		setGaussianBlur(1.0f, 0.0f, deviation, "middleright");
-		setGaussianBlur(-1.0f, -1.0f, deviation, "bottomleft");
-		setGaussianBlur(0.0f, -1.0f, deviation, "bottomcenter");
-		setGaussianBlur(1.0f, -1.0f, deviation, "bottomright");
-		
-		//glPixelZoom(0.5f, 0.5f);
-		
+		//to get the position of cursor
 		glfwGetCursorPos(window, &xpos, &ypos);
-		GLuint loc = glGetUniformLocation(program_Framebuffer, "xpos");
+		//to set the x position of cursor to fs
+		loc = glGetUniformLocation(program_Framebuffer, "xpos");
 		glUniform1f(loc, (float)xpos/800);
 
+		//to set the y position of cursor to fs
 		loc = glGetUniformLocation(program_Framebuffer, "ypos");
 		glUniform1f(loc, (float)ypos/600);
 		
@@ -614,6 +681,7 @@ int main(int argc, char *argv[])
 	}
 
 	//to release and close all the thing
+	//to delete the "framebuffer"
 	glDeleteFramebuffers(1, &framebuffer);
 	releaseObjects();
 	glfwDestroyWindow(window);

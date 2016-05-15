@@ -1,7 +1,15 @@
-VBO & VAO
-VBO(vertex buffer object) 是用來儲存我們想畫的點的資訊
-儲存資訊例如: 位置(position), 顏色(color), texture coordinate
-我們需要手動去儲存每一個VBO的資訊, 畫的時候也是需要讀取每一個VBO, 但當我們有很多的VBO時, 這會使得我們的code非常繁瑣
-於是就有了VAO(vertex array object)
-當我們設定並開啟VAO, 她會去儲存(指向) 我們在關閉此VAO前 所設定的VBO
-當我們把VBO全都設定完後, 只要使用VAO就能畫出所有儲存(指向)的VBO, 就不用call每一個VBO來畫了 (偷懶)
+關於放大的做法
+1. 先把xpos ypos傳到fragment shader上
+2. 在fragment shader上計算fTexcoord 和 xpos ypos之間的距離 (ps: 坐標系不同需轉換 請參考樓上)
+3. 新x座標即是 xpos 加上 xpos 跟 fTexcoord 之x差距的A倍(ps: A若>1 則會有縮小之效果 0<A<1 會有放大效果 若A是負的則會有縮小效果)
+4. 新y座標算法同上
+5. 而後不管是output成color還是要算blur的sample點, 都以剛剛算出來的新座標去做運算即可!
+
+提供另一個與HW4沒有直接相關的另一種作法
+效果如下
+在圈圈內會是以滑鼠為中心, 向外輻射的效果
+要達成這樣的效果需要
+1. 要算出新的輻射半徑(newRadius) = mouse position 和 fTexcoord 的距離(dist) * zoom(倍率 值同上述放大的A) * (dist / 圓圈半徑)(原比例)
+2. 計算新x座標 = 原本的xpos + (xpos 和 fTexcoord 的x差距 / dist)(這是算cos值) * newRadius
+3. 計算新y座標方法同上
+4. 同放大, 之後任何的運算皆以此新座標運算即可

@@ -12,10 +12,11 @@ in vec2 fTexcoord;
 //texture objects is declared as "sampler" type in GLSL
 //sampler1D, sampler2D,etc. 
 uniform sampler2D uSampler;
+
+//the sample distance
 const float offset = 1.0 / 300;  
 
-//uniform float offset;
-
+//the value of kernel
 uniform float topleft;
 uniform float topcenter;
 uniform float topright;
@@ -26,15 +27,20 @@ uniform float bottomleft;
 uniform float bottomcenter;
 uniform float bottomright;
 
-
+//the position of cursor
 uniform float xpos;
 uniform float ypos;
 
+//the Magnification
+uniform float zoom;
+
+//the Radius of our magnifying glass
 const float circleRadius = 0.1f;
-const float zoom = 0.5f;
+
 
 void main()
 {
+	//offset array
     vec2 offsets[9] = vec2[](
         vec2(-offset, offset),  // top-left
         vec2(0.0f,    offset),  // top-center
@@ -48,6 +54,7 @@ void main()
     );
 
 	//normalize the GaussianBlur
+	//it could be normalized to ensure the color won't be darker or lighter
 	float a = 1 / (topleft + topcenter + topright + middleleft + middlecenter + middleright + bottomleft + bottomcenter + bottomright);
 	
 	float kernel[9] = float[](
@@ -64,31 +71,39 @@ void main()
     );
 	*/
 
-	//the texture fuction will sample the color value using the texture parameters (first parameter), and then output the texture at the texture coordinate(second parameter)
-	//color = vec4(vec3(1.0 - texture( uSampler,fTexcoord)), 1.0);
-
-	//color = texture(uSampler, fTexcoord);
-
+	//sample array
 	vec3 sampleTex[9];
 
 	if(xpos > 0.0 && ypos > 0.0)
 	{
+		//to calculate the distance between texcoord and cursor position 
 		float relX = fTexcoord.s - xpos;
 		float relY = fTexcoord.t - (1.0f - ypos);
 		float dist = sqrt(relX*relX + relY*relY);
 
 		if(dist <= circleRadius && dist > 0)
 		{
+			//in our magnifying glass
+
+			/*
 			float newRad = dist * (zoom * dist / circleRadius);
 			float newX = xpos + relX / dist * newRad;
 			float newY = (1.0f - ypos) + relY / dist * newRad;
 			vec2 newtexture = vec2(newX, newY);
+			*/
 
+			//to magnify
+			float newX = xpos + relX * zoom;
+			float newY = (1.0f - ypos) + relY * zoom;
+			vec2 newtexture = vec2(newX, newY);
+			
+			//to sample
 			for(int i = 0; i < 9; i++)
 			{
 				sampleTex[i] = vec3(texture(uSampler, newtexture + offsets[i]));
 			}
 
+			//to blur
 			vec3 col = vec3(0.0);
 			for(int i = 0; i < 9; i++)
 				col += sampleTex[i] * kernel[i];
@@ -97,28 +112,14 @@ void main()
 		}
 		else
 		{
-			for(int i = 0; i < 9; i++)
-			{
-				sampleTex[i] = vec3(texture(uSampler, fTexcoord + offsets[i]));
-			}
-			vec3 col = vec3(0.0);
-			for(int i = 0; i < 9; i++)
-				col += sampleTex[i] * kernel[i];
-
-			color = vec4(col, 1.0);
+			//not in magnifying glass, output ad usual
+			color = texture(uSampler, fTexcoord);
 		}
 	}
 	else
 	{
-			for(int i = 0; i < 9; i++)
-			{
-				sampleTex[i] = vec3(texture(uSampler, fTexcoord + offsets[i]));
-			}
-			vec3 col = vec3(0.0);
-			for(int i = 0; i < 9; i++)
-				col += sampleTex[i] * kernel[i];
-
-			color = vec4(col, 1.0);
+		//cursor is out off window, output ad usual
+		color = texture(uSampler, fTexcoord);
 	}
 	
 }
