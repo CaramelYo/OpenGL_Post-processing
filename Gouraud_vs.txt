@@ -55,7 +55,7 @@ void main()
 	vec3 V = normalize(view_position - world_position);
 	
 	//the the cosine of light direction and world normal, which cannot be negative
-	float diffuse =  max(0.0, dot(L, world_normal));
+	float diffuse =  0.5*max(0.0, dot(L, world_normal));
 	
 	//the reflect light
 	float specular = 0;
@@ -66,7 +66,7 @@ void main()
 		//the reflect light direction
 		vec3 R = -normalize(reflect(L, world_normal));
 		//to calculate the specular by dot(reflect light direction , view direction), which cannot be negative
-		specular = 5 * pow( max(0, dot(R, V)), 64);
+		specular = pow( max(0, dot(R, V)), 150);
 	}
 	
 	//the surrounding light
